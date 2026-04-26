@@ -27,29 +27,22 @@ app.get("/", (req, res) => {
 // Export for Vercel
 export default app;
 
-// Start Server & Connect to DB (Only locally)
-if (process.env.NODE_ENV !== "production") {
-  const startServer = async () => {
-    try {
-      const dbUri = process.env.MONGO_URI;
-      if (dbUri) {
-        await mongoose.connect(dbUri);
-        console.log("Connected to MongoDB");
-      } else {
-        console.warn("MONGO_URI not provided. Skipping DB connection.");
-      }
-      app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-      });
-    } catch (err) {
-      console.error("Failed to start server", err);
+// Start Server & Connect to DB
+const startServer = async () => {
+  try {
+    const dbUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+    if (dbUri) {
+      await mongoose.connect(dbUri);
+      console.log("Connected to MongoDB");
+    } else {
+      console.warn("MONGODB_URI not provided. Skipping DB connection.");
     }
-  };
-  startServer();
-} else {
-  // In production (Vercel), we still need to connect to DB
-  const dbUri = process.env.MONGO_URI;
-  if (dbUri) {
-    mongoose.connect(dbUri).then(() => console.log("Connected to MongoDB")).catch(err => console.error("DB Error", err));
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error("Failed to start server", err);
   }
-}
+};
+
+startServer();
