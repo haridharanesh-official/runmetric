@@ -9,8 +9,8 @@ services:
     envVars:
       - key: MONGODB_URI
         sync: false
-      - key: GOOGLE_APPLICATION_CREDENTIALS
-        value: ./firebase-service-account.json
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
 
   # Python AI Service
   - type: web
