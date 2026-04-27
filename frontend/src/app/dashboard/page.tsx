@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePerformance, EVENT_LABELS } from "@/lib/PerformanceContext";
-import {
-  Clock, Heart, Flame, TrendingUp, Plus, X, ChevronRight, Trash2
+import { 
+  Clock, Heart, Flame, TrendingUp, Plus, X, 
+  ChevronRight, ChevronLeft, Trash2, ArrowUpDown 
 } from "lucide-react";
+import { quickSort } from "@/lib/dsa/Sorting";
+import { PerformanceList, PerformanceNode } from "@/lib/dsa/LinkedList";
 
 const cardVariants: any = {
   hidden: { opacity: 0, y: 20, scale: 0.97 },
@@ -17,6 +20,25 @@ export default function DashboardPage() {
   const [isLogging, setIsLogging] = useState(false);
   const [newRun, setNewRun] = useState({ distance: "", time: "", avgHeartRate: "" });
   const [formError, setFormError] = useState("");
+  const [sortKey, setSortKey] = useState<any>("date");
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const sortedRuns = useMemo(() => {
+    return quickSort([...runs], sortKey, sortAsc);
+  }, [runs, sortKey, sortAsc]);
+
+  // DSA Integration: Linked List for Sequence Navigation
+  const runList = useMemo(() => PerformanceList.fromArray(runs), [runs]);
+  const [currentNode, setCurrentNode] = useState<PerformanceNode<any> | null>(null);
+
+  useEffect(() => {
+    if (runList.head && !currentNode) {
+      setCurrentNode(runList.head);
+    }
+  }, [runList, currentNode]);
+
+  const handleNext = () => currentNode?.next && setCurrentNode(currentNode.next);
+  const handlePrev = () => currentNode?.prev && setCurrentNode(currentNode.prev);
 
   const stats = [
     { label: "Total Runs", value: analytics.totalRuns.toString(), unit: "", icon: TrendingUp, color: "#3b82f6" },
@@ -132,6 +154,60 @@ export default function DashboardPage() {
           );
         })}
       </div>
+
+      {/* DSA Integration: Linked List Sequence Navigator */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="glass-card p-6"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-white mb-1">Performance Sequence</h2>
+            <p className="text-[#64748b] text-sm font-light">Traverse training history using a Doubly Linked List</p>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={handlePrev}
+              disabled={!currentNode?.prev}
+              className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronLeft className="w-5 h-5 text-white" />
+            </button>
+            <button 
+              onClick={handleNext}
+              disabled={!currentNode?.next}
+              className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronRight className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+
+        {currentNode ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
+              <p className="text-[10px] text-blue-400 uppercase font-bold tracking-widest mb-1">Session Date</p>
+              <p className="text-lg font-black text-white">{currentNode.value.date.substring(0, 10)}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+              <p className="text-[10px] text-emerald-400 uppercase font-bold tracking-widest mb-1">Distance</p>
+              <p className="text-lg font-black text-white">{currentNode.value.distance} km</p>
+            </div>
+            <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
+              <p className="text-[10px] text-amber-400 uppercase font-bold tracking-widest mb-1">Avg Pace</p>
+              <p className="text-lg font-black text-white">{currentNode.value.avgPace} /km</p>
+            </div>
+            <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/10">
+              <p className="text-[10px] text-rose-400 uppercase font-bold tracking-widest mb-1">Fatigue</p>
+              <p className="text-lg font-black text-white">{currentNode.value.fatigueIndex}%</p>
+            </div>
+          </div>
+        ) : (
+          <div className="h-20 flex items-center justify-center text-[#475569]">Initializing performance sequence...</div>
+        )}
+      </motion.div>
 
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -270,9 +346,27 @@ export default function DashboardPage() {
             transition={{ delay: 0.4 }}
             className="glass-card p-7 flex-1"
           >
-            <h2 className="text-xl font-bold text-white mb-5">Recent History</h2>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xl font-bold text-white">Recent History</h2>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => { setSortKey("distance"); setSortAsc(!sortAsc); }}
+                  className={`p-1.5 rounded-lg border text-xs transition-colors ${sortKey === "distance" ? "bg-blue-600/20 border-blue-600/50 text-blue-400" : "bg-white/5 border-white/10 text-[#64748b]"}`}
+                  title="Sort by Distance"
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5" /> Dist
+                </button>
+                <button 
+                  onClick={() => { setSortKey("fatigueIndex"); setSortAsc(!sortAsc); }}
+                  className={`p-1.5 rounded-lg border text-xs transition-colors ${sortKey === "fatigueIndex" ? "bg-blue-600/20 border-blue-600/50 text-blue-400" : "bg-white/5 border-white/10 text-[#64748b]"}`}
+                  title="Sort by Fatigue"
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5" /> Fatigue
+                </button>
+              </div>
+            </div>
             <div className="space-y-3">
-              {runs.slice(0, 6).map((run, i) => {
+              {sortedRuns.slice(0, 6).map((run, i) => {
                 const ev = EVENT_LABELS[run.eventCategory];
                 return (
                   <motion.div

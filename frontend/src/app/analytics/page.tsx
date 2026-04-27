@@ -7,7 +7,8 @@ import {
   ResponsiveContainer, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend
 } from "recharts";
 import { usePerformance, EVENT_LABELS, EventCategory } from "@/lib/PerformanceContext";
-import { Zap, Target, TrendingUp, AlertTriangle, Shield, Activity } from "lucide-react";
+import { Zap, Target, TrendingUp, AlertTriangle, Shield, Activity, Share2 } from "lucide-react";
+import { PerformanceGraph } from "@/lib/dsa/Graph";
 
 const TABS = [
   { key: "all",    label: "All Events",    icon: "📊", color: "#3b82f6" },
@@ -63,6 +64,28 @@ export default function AnalyticsPage() {
     { key: "mid" as EventCategory, stats: analytics.midStats, icon: <Target className="w-4 h-4" />, color: "#f59e0b" },
     { key: "long" as EventCategory, stats: analytics.longStats, icon: <TrendingUp className="w-4 h-4" />, color: "#10b981" },
   ];
+
+  // DSA Integration: Graph - Find Correlation Clusters
+  const graph = new PerformanceGraph();
+  runs.forEach(run => graph.addNode(run.id));
+  
+  // Connect runs that have similar fatigue (+/- 5%) and pace (+/- 10s)
+  for (let i = 0; i < runs.length; i++) {
+    for (let j = i + 1; j < runs.length; j++) {
+      const r1 = runs[i];
+      const r2 = runs[j];
+      const fatigueDiff = Math.abs(r1.fatigueIndex - r2.fatigueIndex);
+      const pace1 = parsePaceToSec(r1.avgPace);
+      const pace2 = parsePaceToSec(r2.avgPace);
+      const paceDiff = Math.abs(pace1 - pace2);
+      
+      if (fatigueDiff < 5 && paceDiff < 15) {
+        graph.addEdge(r1.id, r2.id);
+      }
+    }
+  }
+  
+  const clusters = graph.findClusters();
 
   return (
     <div className="space-y-8 text-[#f1f5f9]">
@@ -286,22 +309,61 @@ export default function AnalyticsPage() {
 
             {/* Chart 3: Radar (all events only) */}
             {activeTab === "all" && (
-              <div className="glass-card p-7">
-                <h2 className="text-xl font-bold text-white mb-1">Cross-Event Performance Radar</h2>
-                <p className="text-[#64748b] text-sm mb-6">Normalised comparison of sprint, mid-distance, and long-distance metrics</p>
-                <div className="h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart data={radarData} margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
-                      <PolarGrid stroke="rgba(148,163,184,0.1)" />
-                      <PolarAngleAxis dataKey="metric" tick={{ fill: "#64748b", fontSize: 11 }} />
-                      <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                      <Radar name="Sprint" dataKey="sprint" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.2} strokeWidth={2} />
-                      <Radar name="Mid" dataKey="mid" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.15} strokeWidth={2} />
-                      <Radar name="Long" dataKey="long" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
-                      <Legend wrapperStyle={{ paddingTop: 16, fontSize: 12 }} />
-                      <Tooltip {...tipStyle} />
-                    </RadarChart>
-                  </ResponsiveContainer>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="glass-card p-7">
+                  <h2 className="text-xl font-bold text-white mb-1">Performance Radar</h2>
+                  <p className="text-[#64748b] text-sm mb-6">Normalized multi-metric comparison</p>
+                  <div className="h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart data={radarData} margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
+                        <PolarGrid stroke="rgba(148,163,184,0.1)" />
+                        <PolarAngleAxis dataKey="metric" tick={{ fill: "#64748b", fontSize: 11 }} />
+                        <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                        <Radar name="Sprint" dataKey="sprint" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.2} strokeWidth={2} />
+                        <Radar name="Mid" dataKey="mid" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.15} strokeWidth={2} />
+                        <Radar name="Long" dataKey="long" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
+                        <Legend wrapperStyle={{ paddingTop: 16, fontSize: 12 }} />
+                        <Tooltip {...tipStyle} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="glass-card p-7">
+                  <div className="flex items-center justify-between mb-1">
+                    <h2 className="text-xl font-bold text-white">Session Correlations</h2>
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
+                      <Share2 className="w-3 h-3" /> Graph DFS/BFS
+                    </div>
+                  </div>
+                  <p className="text-[#64748b] text-sm mb-6">Groups of training sessions with similar physiological profiles</p>
+                  
+                  <div className="space-y-4 max-h-[280px] overflow-y-auto pr-2 custom-scrollbar">
+                    {clusters.map((cluster, idx) => (
+                      <div key={idx} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-colors">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-bold text-blue-400 uppercase tracking-tighter">Cluster {idx + 1}</span>
+                          <span className="text-[10px] text-[#475569]">{cluster.length} connected sessions</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {cluster.map(runId => {
+                            const run = runs.find(r => r.id === runId);
+                            if (!run) return null;
+                            return (
+                              <div key={runId} className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[10px] text-[#94a3b8]">
+                                {run.date.split('-').slice(1).join('/')} • {run.distance}km
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    {clusters.length === 0 && (
+                      <div className="text-center py-12 text-[#475569] text-sm">
+                        No significant correlations found between training sessions.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
