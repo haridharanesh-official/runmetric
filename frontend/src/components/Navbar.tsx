@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Activity, LayoutDashboard, BarChart3, Brain, User, LogIn, LogOut } from "lucide-react";
+import { Activity, LayoutDashboard, BarChart3, Brain, GitBranch, User, LogIn, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
 const navLinks = [
