@@ -10,6 +10,7 @@ const navLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/coach", label: "AI Coach", icon: Brain },
+  { href: "/dsa", label: "DSA Lab", icon: GitBranch },
   { href: "/profile", label: "Profile", icon: User },
 ];
 

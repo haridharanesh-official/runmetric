@@ -12,12 +12,14 @@ app.use(express.json());
 import authRoutes from "./routes/auth";
 import athleteRoutes from "./routes/athlete";
 import performanceRoutes from "./routes/performance";
+import dsaRoutes from "./routes/dsa";
 
 const PORT = process.env.PORT || 5000;
 
 app.use("/api/auth", authRoutes);
 app.use("/api/athlete", athleteRoutes);
 app.use("/api/performance", performanceRoutes);
+app.use("/api/dsa", dsaRoutes);
 
 // Root Route
 app.get("/", (req, res) => {
